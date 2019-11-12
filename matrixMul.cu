@@ -1,20 +1,34 @@
 #include <stdio.h>
 #include <assert.h>
 
-
-__global__ void matrixMulCUDA(float *A, float *B){
+__global__ void matrixMulCUDA(float *A, float *B, float *C, int size){
     
-    // Block Index
-    int xBlockIndex = blockIdx.x;
-    int yBlockIndex = blockIdx.y;
+    // Code from HW slide
+    __shared__ float smem_c[64][64];
+    __shared__ float smem_a[64][8];
+    __shared__ float smem_b[8][64];
 
-    // Thread Index 
-    int xThreadIndex = threadIdx.x;
-    int yThreadIndex = threadIdx.y;
+    int col = blockIdx.x * 64;
+    int row = blockIdx.y * 64;
+
+    for(int kk = 0; kk < size; kk += 8){
+        for(int i = threadIdx.x + blockDim.x* threadIdx.y;
+            i < 64 * 8; i += blockDim.x * blockDim.y){
+            int k = kk + i / 64;
+            int rt = row + i % 64;
+            int ct = col + i % 64;
+            smem_a[i%64][i/64] = A[rt*size+k];
+            smem_b[i/64][i%64] = B[k*size+ct];
+        }
+    __syncthreads();
+    // ....
+    }
 
 }
 
 int main() {
+    
+    const int N = 8 * 64; // 256
 
     // Declare host memory for Matrices A and B
     float *hostA, *hostB, *hostC;
@@ -23,31 +37,28 @@ int main() {
     float *deviceA, *deviceB, *deviceC;
 
     // dimensions of the matrices
-    const int dimsAx = 64;
-    const int dimsAy = 8;
-    const int dimsBx = 8;
-    const int dimsBy = 64;
+    const int aRows = 64; // A = aRows * aCols 
+    const int aCols = 8;  // B = bRows * bCols
+    const int bRows = 8;
+    const int bCols = 64;
 
     // Allocate host memory for Matrices A and B
-    size_t memSizeA = sizeof(float) * dimsAx * dimsAy;
-    size_t memSizeB = sizeof(float) * dimsBx * dimsBy; 
-    float *hostA = reinterpet_cast<float* > (malloc(memSizeA));
-    float *hostB = reinterpet_cast<float* > (malloc(memSizeB));
+    size_t memSizeA = sizeof(float) * aRows * aCols;
+    size_t memSizeB = sizeof(float) * bRows * bCols; 
+    float *hostA = reinterpret_cast<float* > (malloc(memSizeA));
+    float *hostB = reinterpret_cast<float* > (malloc(memSizeB));
 
+    // sanity check
+    assert(aRows == bCols);
+    
     // init host memory
 
     // A = 2, 2, 2, 2 . . .
-    for(int i=0; i < dimsAx; ++i){
-        for(int j=0; i < dimsAy; ++j){
-            A[i][j] = 2;
-        }
-    }
-
-
     // B = 3, 3, 3, 3 . . .
-    for(int outIndex=0; outIndex < dimsBx; ++outIndex){
-        for(int innerIndex=0; innerIndex < dimsBy; ++innerIndex){
-            B[outIndex][innerIndex] = 3;
+    for(int i=0; i < N; ++i){
+        for(int j=0; j < N; ++j){
+            hostA[i*N+j] = 2;
+            hostB[i*N+j] = 3;
         }
     }
 
@@ -63,7 +74,6 @@ int main() {
 
     cudaFree(deviceA);
     cudaFree(deviceB);
-    
 
     return 0;
 }
