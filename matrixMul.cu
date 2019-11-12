@@ -37,16 +37,20 @@ int main() {
     float *deviceA, *deviceB, *deviceC;
 
     // dimensions of the matrices
-    const int aRows = 64; // A = aRows * aCols 
-    const int aCols = 8;  // B = bRows * bCols
+    const int aRows = 64;    // A = aRows * aCols 
+    const int aCols = 8;     // B = bRows * bCols
     const int bRows = 8;
     const int bCols = 64;
+    const int cRows = aRows; // C = aRows * bCols 
+    const int cCols = bCols;
 
     // Allocate host memory for Matrices A and B
     size_t memSizeA = sizeof(float) * aRows * aCols;
     size_t memSizeB = sizeof(float) * bRows * bCols; 
+    size_t memSizeC = sizeof(float) * cRows * cCols;
     float *hostA = reinterpret_cast<float* > (malloc(memSizeA));
     float *hostB = reinterpret_cast<float* > (malloc(memSizeB));
+    float *hostC = reinterpret_cast<float* > (malloc(memSizeC));
 
     // sanity check
     assert(aRows == bCols);
@@ -65,7 +69,18 @@ int main() {
     // Allocate device memory
     cudaMalloc(reinterpret_cast<void **>(&deviceA), memSizeA);
     cudaMalloc(reinterpret_cast<void **>(&deviceB), memSizeB);
+    cudaMalloc(reinterpret_cast<void **>(&deviceC), memSizeC);
 
+    // Copy Matrix A and B from host to device
+    cudaMemcpy(deviceA, hostA, memsizeA, cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceB, hostB, memsizeB, cudaMemcpyHostToDevice);
+
+    // Init Kernel
+    
+
+
+    // Transfer from result matrix from device to host
+    cudaMemcpy(hostC, deviceC, memsizeC, cudaMemcpyDeviceToHost);
 
     // free memory
     free(hostA);
